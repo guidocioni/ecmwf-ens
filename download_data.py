@@ -1,5 +1,8 @@
 from ecmwf.opendata import Client
+import os
 import sys
+
+folder = os.getenv('MODEL_DATA_FOLDER')
 
 client = Client(source="ecmwf")
 
@@ -18,7 +21,7 @@ for var in ['2t','tp']:
         date=date,
         time=time,
         param=var,
-        target=f"/home/ekman/ssd/guido/ecmwf-ens/{var}.grib2",
+        target=f"{folder}/{var}.grib2",
         step=steps,
     )
 
@@ -29,6 +32,6 @@ client.retrieve(
     date=date,
     time=time,
     levelist=850,
-    target="/home/ekman/ssd/guido/ecmwf-ens/t_850.grib2",
+    target=f"{folder}/t_850.grib2",
     step=steps,
 )

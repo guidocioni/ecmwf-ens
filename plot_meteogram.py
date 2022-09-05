@@ -105,7 +105,7 @@ def plot(dset_city):
     fig = plt.figure(1, figsize=(9, 10))
     ax1 = plt.subplot2grid((nrows, ncols), (0, 0))
     ax1.set_title("ECMWF-ENS meteogram for "+city+" | Run " +
-                  (time[0]-np.timedelta64(6, 'h')).strftime('%Y%m%d %H UTC'))
+                  (time[0]-np.timedelta64(3, 'h')).strftime('%Y%m%d %H UTC'))
     bplot = ax1.boxplot(dset_city['t2m'].values, patch_artist=True,
                         showfliers=False, positions=pos, widths=2.5)
     for box in bplot['boxes']:
