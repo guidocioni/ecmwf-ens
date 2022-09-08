@@ -12,6 +12,7 @@ import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
+from matplotlib import gridspec
 matplotlib.use('Agg')
 
 
@@ -29,7 +30,7 @@ else:
 def main():
     dset = xr.open_dataset('/home/ekman/ssd/guido/ecmwf-ens/2t.grib2')
     abs_time = (dset.valid_time.dt.dayofyear.astype(str).astype(object) +
-                    np.char.zfill(dset.valid_time.dt.hour.astype(str), 2).astype(object)).astype(int).compute()
+                np.char.zfill(dset.valid_time.dt.hour.astype(str), 2).astype(object)).astype(int).compute()
     del dset
 
     # read climatology
@@ -73,15 +74,8 @@ def main():
 
 def plot(dset_city):
     city = dset_city.attrs['city']
-    nrows = 3
-    ncols = 1
-    sns.set(style="white")
-
-    time = pd.to_datetime(dset_city['valid_time'].values)
-    # Array needed for the box plot
-    pos = np.array((time - time[0]) / pd.Timedelta('1 hour')).astype("int")
-
     print('Producing meteogram for %s' % city)
+
     # Recover units which somehow are deleted by interpolate_na,
     # no idea why....
     dset_city['t2m'].attrs['units'] = 'K'
@@ -99,56 +93,72 @@ def plot(dset_city):
         'degC').metpy.dequantify()
     dset_city['2t_clim'] = dset_city['2t_clim'].metpy.convert_units(
         'degC').metpy.dequantify()
-    # wind_speed = mpcalc.wind_speed(
-    #     dset_city['10u'], dset_city['10v']).metpy.convert_units('kph').metpy.dequantify()
+
+    nrows = 3
+    ncols = 1
+    sns.set(style="white")
+
+    locator = mdates.AutoDateLocator(minticks=12, maxticks=36)
+    formatter = mdates.ConciseDateFormatter(locator, show_offset=False)
 
     fig = plt.figure(1, figsize=(9, 10))
-    ax1 = plt.subplot2grid((nrows, ncols), (0, 0))
+    gs = gridspec.GridSpec(nrows, ncols, height_ratios=[1, 1, 1])
+
+    ax1 = plt.subplot(gs[0])
     ax1.set_title("ECMWF-ENS meteogram for "+city+" | Run " +
-                  (time[0]-np.timedelta64(3, 'h')).strftime('%Y%m%d %H UTC'))
+                  dset_city.time.dt.strftime('%Y%m%d %H UTC').item())
+
     bplot = ax1.boxplot(dset_city['t2m'].values, patch_artist=True,
-                        showfliers=False, positions=pos, widths=2.5)
+                        showfliers=False, widths=0.08,
+                        positions=mdates.date2num(dset_city.valid_time))
     for box in bplot['boxes']:
         box.set(color='LightBlue')
         box.set(facecolor='LightBlue')
 
-    ax1.plot(pos, dset_city['t2m'].mean(dim='number'), 'r-', linewidth=1)
-    ax1.plot(pos, dset_city['2t_clim'], '-',
+    ax1.plot(dset_city.valid_time, dset_city['t2m'].mean(
+        dim='number'), 'r-', linewidth=1)
+    ax1.plot(dset_city.valid_time, dset_city['2t_clim'], '-',
              color='gray', linewidth=3, alpha=0.5)
-    ax1.set_xlim(pos[0], pos[-1])
+    ax1.set_xlim(dset_city.valid_time[0], dset_city.valid_time[-1])
     ax1.set_ylabel("2m Temp. [C]", fontsize=8)
     ax1.yaxis.grid(True)
     ax1.xaxis.grid(True, color='gray', linewidth=0.2)
     ax1.tick_params(axis='y', which='major', labelsize=8)
     ax1.tick_params(axis='x', which='both', bottom=False)
+    ax1.xaxis.set_major_locator(locator)
+    ax1.xaxis.set_major_formatter(formatter)
 
-    ax2 = plt.subplot2grid((nrows, ncols), (1, 0))
+    ax2 = plt.subplot(gs[1])
     bplot_rain = ax2.boxplot(dset_city['tp'].values, patch_artist=True,
-                             showfliers=False, positions=pos, widths=2.5)
+                             showfliers=False, positions=mdates.date2num(dset_city.valid_time),
+                             widths=0.08)
     for box in bplot_rain['boxes']:
         box.set(color='LightBlue')
         box.set(facecolor='LightBlue')
 
-    ax2.plot(pos, dset_city['tp'].mean(dim='number'), 'r-', linewidth=1)
+    ax2.plot(dset_city.valid_time, dset_city['tp'].mean(
+        dim='number'), 'r-', linewidth=1)
     ax2.set_ylim(bottom=0)
-    ax2.set_xlim(pos[0], pos[-1])
+    ax2.set_xlim(dset_city.valid_time[0], dset_city.valid_time[-1])
     ax2.yaxis.grid(True)
     ax2.set_ylabel("Precipitation [mm]", fontsize=8)
     ax2.xaxis.grid(True, color='gray', linewidth=0.2)
     ax2.tick_params(axis='y', which='major', labelsize=8)
+    ax2.xaxis.set_major_locator(locator)
+    ax2.xaxis.set_major_formatter(formatter)
 
-    ax4 = plt.subplot2grid((nrows, ncols), (2, 0))
-    ax4.plot(time, dset_city['t'].values.T, '-', linewidth=0.8)
-    ax4.plot(time, dset_city['t_clim'].values, '-', linewidth=2, color='gray')
-    ax4.set_xlim(time[0], time[-1])
-    ax4.set_ylabel("850 hPa Temp. [C]", fontsize=8)
-    ax4.tick_params(axis='y', which='major', labelsize=8)
-    ax4.yaxis.grid(True)
-    ax4.xaxis.grid(True)
-    ax4.xaxis.set_major_locator(mdates.DayLocator())
-    ax4.xaxis.set_major_formatter(DateFormatter('%d %b %Y'))
+    ax3 = plt.subplot(gs[2])
+    ax3.plot(dset_city.valid_time, dset_city['t'].values.T, '-', linewidth=0.8)
+    ax3.plot(dset_city.valid_time, dset_city['t_clim'].values, '-', linewidth=2, color='gray')
+    ax3.set_xlim(dset_city.valid_time[0], dset_city.valid_time[-1])
+    ax3.set_ylabel("850 hPa Temp. [C]", fontsize=8)
+    ax3.tick_params(axis='y', which='major', labelsize=8)
+    ax3.yaxis.grid(True)
+    ax3.xaxis.grid(True)
+    ax3.xaxis.set_major_locator(locator)
+    ax3.xaxis.set_major_formatter(formatter)
 
-    ax4.annotate('Grid point %3.1fN %3.1fE' % (dset_city.latitude, dset_city.longitude),
+    ax3.annotate('Grid point %3.1fN %3.1fE' % (dset_city.latitude, dset_city.longitude),
                  xy=(0.7, -0.7), xycoords='axes fraction', color="gray")
 
     fig.subplots_adjust(hspace=0.1)
