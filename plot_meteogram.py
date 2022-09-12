@@ -99,7 +99,8 @@ def plot(dset_city):
     sns.set(style="white")
 
     locator = mdates.AutoDateLocator(minticks=12, maxticks=36)
-    formatter = mdates.ConciseDateFormatter(locator, show_offset=False)
+    formatter = mdates.ConciseDateFormatter(locator, show_offset=False,
+                                            formats=['%y', '%a %d %b', '%a %d %b', '%H:%M', '%H:%M', '%S'])
 
     fig = plt.figure(1, figsize=(9, 10))
     gs = gridspec.GridSpec(nrows, ncols, height_ratios=[1, 1, 1])
@@ -124,7 +125,7 @@ def plot(dset_city):
     ax1.yaxis.grid(True)
     ax1.xaxis.grid(True, color='gray', linewidth=0.2)
     ax1.tick_params(axis='y', which='major', labelsize=8)
-    ax1.tick_params(axis='x', which='both', bottom=False)
+    ax1.tick_params(axis='x', which='both', bottom=False, labelbottom=False)
     ax1.xaxis.set_major_locator(locator)
     ax1.xaxis.set_major_formatter(formatter)
 
@@ -138,12 +139,21 @@ def plot(dset_city):
 
     ax2.plot(dset_city.valid_time, dset_city['tp'].mean(
         dim='number'), 'r-', linewidth=1)
+    prob = ((dset_city['tp'] > 0.01).sum(
+        dim='number') / len(dset_city.number)) * 100
+    prob = prob.where(prob > 10)
+    ax2b = ax2.twinx()
+    ax2b.plot(dset_city.valid_time, prob, 'o', markersize=4)
+    ax2b.set_ylabel("Precipitation prob (%)", fontsize=8)
+    ax2b.tick_params(axis='y', which='major', labelsize=8)
+    ax2b.set_ylim(bottom=0)
     ax2.set_ylim(bottom=0)
     ax2.set_xlim(dset_city.valid_time[0], dset_city.valid_time[-1])
     ax2.yaxis.grid(True)
     ax2.set_ylabel("Precipitation [mm]", fontsize=8)
     ax2.xaxis.grid(True, color='gray', linewidth=0.2)
     ax2.tick_params(axis='y', which='major', labelsize=8)
+    ax2.tick_params(axis='x', which='both', bottom=False, labelbottom=False)
     ax2.xaxis.set_major_locator(locator)
     ax2.xaxis.set_major_formatter(formatter)
 
@@ -157,12 +167,14 @@ def plot(dset_city):
     ax3.xaxis.grid(True)
     ax3.xaxis.set_major_locator(locator)
     ax3.xaxis.set_major_formatter(formatter)
+    ax3.tick_params(axis='x', which='both', labelsize=8)
+    for label in ax3.get_xticklabels(which='major'):
+        label.set(rotation=90)
 
     ax3.annotate('Grid point %3.1fN %3.1fE' % (dset_city.latitude, dset_city.longitude),
-                 xy=(0.7, -0.7), xycoords='axes fraction', color="gray")
+                 xy=(0.7, -0.5), xycoords='axes fraction', color="gray")
 
     fig.subplots_adjust(hspace=0.1)
-    fig.autofmt_xdate()
 
     plt.savefig(folder_images+"meteogram_"+city, dpi=100, bbox_inches='tight')
     plt.clf()
