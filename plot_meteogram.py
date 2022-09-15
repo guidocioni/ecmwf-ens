@@ -35,17 +35,30 @@ def main():
 
     # read climatology
     clima = xr.open_dataset(
-        '/home/ekman/guido/climatologies/clima_1981-2010_CSFR_t_850.nc').squeeze().sel(time='2010')
-
+        '/home/ekman/guido/climatologies/era5_t850_1991-2020_mean.nc').squeeze().rename({'T':'t'})
+    # Convert stupid fractional time
+    date = np.modf(clima.time)[1].astype(int).astype(str)
+    hours = (np.modf(clima.time)[0] * 24.).astype(int).astype(str).str.zfill(width=2)
+    datetime = date.str.cat(hours)
+    time = pd.to_datetime(datetime, format='%Y%m%d%H')
+    clima['time'] = time.values
+    clima = clima.sel(time='2020')
     clima['abs_time'] = (clima.time.dt.dayofyear.astype(str).astype(object) +
                          np.char.zfill(clima.time.dt.hour.astype(str), 2).astype(object)).astype(int)
     clima = clima.assign_coords({'time': clima['abs_time']})
     clima = clima.sel(time=abs_time, method='nearest')
     #
     clima_t2 = xr.open_dataset(
-        '/home/ekman/guido/climatologies/clima_1981-2010_CSFR_t_2m.nc').squeeze().sel(time='2010')
+        '/home/ekman/guido/climatologies/era5_t2m_1991-2020_mean.nc').squeeze().rename({'T2M':'2t'})
+    # Convert stupid fractional time
+    date = np.modf(clima_t2.time)[1].astype(int).astype(str)
+    hours = (np.modf(clima_t2.time)[0] * 24.).astype(int).astype(str).str.zfill(width=2)
+    datetime = date.str.cat(hours)
+    time = pd.to_datetime(datetime, format='%Y%m%d%H')
+    clima_t2['time'] = time.values
+    clima_t2 = clima_t2.sel(time='2020')
     clima_t2['abs_time'] = (clima_t2.time.dt.dayofyear.astype(str).astype(object) +
-                            np.char.zfill(clima_t2.time.dt.hour.astype(str), 2).astype(object)).astype(int)
+                         np.char.zfill(clima_t2.time.dt.hour.astype(str), 2).astype(object)).astype(int)
     clima_t2 = clima_t2.assign_coords({'time': clima_t2['abs_time']})
     clima_t2 = clima_t2.sel(time=abs_time, method='nearest')
 
